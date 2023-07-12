@@ -1,0 +1,48 @@
+{
+    "name": "@codeagent/tree-sitter-wrapper",
+    "version": "0.0.1",
+    "description": "Tree-sitter parser wrapper with language loading and query execution for CodeAgent",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@codeagent/core-types": "workspace:*",
+        "@codeagent/language-detector": "workspace:*",
+        "tree-sitter": "^0.21.0",
+        "tree-sitter-javascript": "^0.21.0",
+        "tree-sitter-typescript": "^0.21.0",
+        "tree-sitter-python": "^0.21.0",
+        "tree-sitter-java": "^0.21.0",
+        "tree-sitter-go": "^0.21.0",
+        "tree-sitter-rust": "^0.21.0",
+        "tree-sitter-cpp": "^0.21.0",
+        "tree-sitter-c-sharp": "^0.21.0",
+        "tree-sitter-php": "^0.23.12",
+        "tree-sitter-ruby": "^0.23.1",
+        "tree-sitter-swift": "^0.6.0",
+        "tree-sitter-kotlin": "^0.3.8"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "typescript": "^5.4.5",
+        "vitest": "^1.6.0"
+    },
+    "optionalDependencies": {
+        "tree-sitter-swift": "^0.6.0",
+        "tree-sitter-kotlin": "^0.3.8"
+    }
+}
