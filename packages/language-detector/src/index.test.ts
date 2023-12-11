@@ -103,3 +103,160 @@ describe('LanguageDetector', () => {
         });
     });
 });
+import { describe, it, expect, beforeEach } from 'vitest';
+import path from 'path';
+import { ImportResolver, resolveImport, resolveImportsBatch } from './resolver.js';
+import { createFileIndex, findFileBySuffix, findFilesInDirectory } from './file-index.js';
+import { createPathMapper, resolvePathAlias } from './path-mapper.js';
+
+describe('ImportResolver', () => {
+    let files: string[];
+    let rootPath: string;
+
+    beforeEach(() => {
+        rootPath = '/project';
+        files = [
+            'src/index.ts',
+            'src/utils/helpers.ts',
+            'src/components/Button.tsx',
+            'lib/helpers.js',
+            'package.json',
+        ];
+    });
+
+    describe('FileIndex', () => {
+        it('creates index from file list', () => {
+            const index = createFileIndex(files, rootPath);
+
+            expect(index.paths.has('/project/src/index.ts')).toBe(true);
+            expect(index.paths.has('src/index.ts')).toBe(true);
+            expect(index.paths.has('index.ts')).toBe(true);
+        });
+
+        it('finds file by suffix', () => {
+            const index = createFileIndex(files, rootPath);
+            const extensions = ['.ts', '.tsx'];
+
+            const found = findFileBySuffix(index, 'utils/helpers', extensions);
+            expect(found).toContain('helpers.ts');
+        });
+
+        it('finds files in directory', () => {
+            const index = createFileIndex(files, rootPath);
+            const filesInDir = findFilesInDirectory(index, 'src');
+
+            expect(filesInDir.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('PathMapper', () => {
+        it('resolves path aliases', () => {
+            const aliases = new Map([['@', 'src']]);
+            const mapper = createPathMapper(aliases, rootPath);
+
+            const result = mapper.mapAlias('@/utils/helpers');
+            expect(result).toBe('src/utils/helpers');
+        });
+
+        it('resolves relative paths', () => {
+            const aliases = new Map();
+            const mapper = createPathMapper(aliases, rootPath);
+
+            const result = mapper.resolveRelative('/project/src/index.ts', './utils/helpers');
+            expect(result).toBe('/project/src/utils/helpers');
+        });
+    });
+
+    describe('ImportResolver', () => {
+        let resolver: ImportResolver;
+
+        beforeEach(() => {
+            resolver = new ImportResolver(files, rootPath);
+        });
+
+        it('resolves relative imports', async () => {
+            const result = await resolver.resolve('./utils/helpers', '/project/src/index.ts');
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolvedPath).toContain('helpers.ts');
+            expect(result.resolutionMethod).toBe('relative');
+        });
+
+        it('resolves sibling imports', async () => {
+            const result = await resolver.resolve('./helpers', '/project/src/utils/index.ts');
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolvedPath).toContain('helpers.ts');
+        });
+
+        it('returns unresolved for missing imports', async () => {
+            const result = await resolver.resolve('./missing', '/project/src/index.ts');
+
+            expect(result.resolved).toBe(false);
+            expect(result.error).toBeDefined();
+        });
+
+        it('handles path aliases', async () => {
+            const aliasResolver = new ImportResolver(files, rootPath, new Map([['@', 'src']]));
+            const result = await aliasResolver.resolve('@/utils/helpers', '/project/src/index.ts');
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolutionMethod).toBe('path-alias');
+        });
+    });
+
+    describe('Language-specific resolvers', () => {
+        it('resolves Python relative imports', async () => {
+            const pythonFiles = ['app/models/user.py', 'app/__init__.py', 'app/services/auth.py'];
+            const resolver = new ImportResolver(pythonFiles, rootPath);
+            const result = await resolver.resolve(
+                '.models.user',
+                '/project/app/services/auth.py',
+                'python'
+            );
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolvedPath).toContain('models/user.py');
+        });
+
+        it('resolves Go imports', async () => {
+            const goFiles = ['cmd/main.go', 'internal/auth/handler.go', 'pkg/utils/helper.go'];
+            const resolver = new ImportResolver(goFiles, rootPath);
+            const result = await resolver.resolve(
+                'internal/auth',
+                '/project/cmd/main.go',
+                'go'
+            );
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolutionMethod).toBe('directory');
+        });
+
+        it('resolves Rust crate imports', async () => {
+            const rustFiles = ['src/main.rs', 'src/lib.rs', 'src/models/user.rs'];
+            const resolver = new ImportResolver(rustFiles, rootPath);
+            const result = await resolver.resolve(
+                'crate::models::user',
+                '/project/src/main.rs',
+                'rust'
+            );
+
+            expect(result.resolved).toBe(true);
+            expect(result.resolutionMethod).toBe('crate');
+        });
+    });
+
+    describe('Batch resolution', () => {
+        it('resolves multiple imports', async () => {
+            const imports = ['./utils/helpers', './missing', '@src/index'];
+            const aliases = new Map([['@src', 'src']]);
+            const resolver = new ImportResolver(files, rootPath, aliases);
+            const result = await resolver.resolveBatch(imports, '/project/src/index.ts');
+
+            expect(result.stats.total).toBe(3);
+            expect(result.stats.resolved).toBe(2);
+            expect(result.stats.unresolved).toBe(1);
+            expect(result.unresolved).toContain('./missing');
+        });
+    });
+});
