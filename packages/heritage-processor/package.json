@@ -1,0 +1,32 @@
+{
+    "name": "@codeagent/heritage-processor",
+    "version": "0.0.1",
+    "description": "Heritage processor for inheritance relationships (extends/implements) for CodeAgent",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@codeagent/core-types": "workspace:*",
+        "@codeagent/ast-extractor": "workspace:*",
+        "@codeagent/import-resolver": "workspace:*",
+        "@codeagent/graph-store": "workspace:*"
+    },
+    "devDependencies": {
+        "typescript": "^5.4.5",
+        "vitest": "^1.6.0"
+    }
+}
