@@ -1,0 +1,42 @@
+{
+    "name": "@codeagent/cli",
+    "version": "0.0.1",
+    "description": "CLI tool for CodeAgent with analyze, status, list, and clean commands",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "codeagent": "./dist/cli.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "clean": "rm -rf dist",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@codeagent/core-types": "workspace:*",
+        "@codeagent/graph-store": "workspace:*",
+        "@codeagent/fs-walker": "workspace:*",
+        "@codeagent/ingestion-pipeline": "workspace:*",
+        "@codeagent/mcp-server": "workspace:*",
+        "commander": "^12.0.0",
+        "chalk": "^5.3.0",
+        "cli-progress": "^3.12.0",
+        "ora": "^8.0.0"
+    },
+    "devDependencies": {
+        "@types/cli-progress": "^3.11.5",
+        "@types/node": "^20.0.0",
+        "typescript": "^5.4.5",
+        "vitest": "^1.6.0"
+    }
+}
