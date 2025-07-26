@@ -197,3 +197,159 @@ export class ProcessDetector {
                 }
 
                 if (!added && current.path.length >= this.config.minSteps) {
+                    traces.push([...current.path]);
+                    tracesFound++;
+                }
+            }
+        }
+
+        return traces;
+    }
+
+    private deduplicateTraces(traces: string[][]): string[][] {
+        if (traces.length === 0) return [];
+
+        const sorted = [...traces].sort((a, b) => b.length - a.length);
+        const unique: string[][] = [];
+
+        for (const trace of sorted) {
+            const traceKey = trace.join('->');
+            const isSubset = unique.some(existing => existing.join('->').includes(traceKey));
+            if (!isSubset) {
+                unique.push(trace);
+            }
+        }
+
+        return unique;
+    }
+
+    private deduplicateByEndpoints(traces: string[][]): string[][] {
+        const byEndpoint = new Map<string, string[]>();
+        const sorted = [...traces].sort((a, b) => b.length - a.length);
+
+        for (const trace of sorted) {
+            const key = `${trace[0]}::${trace[trace.length - 1]}`;
+            if (!byEndpoint.has(key)) {
+                byEndpoint.set(key, trace);
+            }
+        }
+
+        return Array.from(byEndpoint.values());
+    }
+
+    private generateProcessLabel(trace: string[]): string {
+        if (trace.length === 0) return 'Empty Process';
+
+        const entryNode = this.nodeMap.get(trace[0]);
+        const terminalNode = this.nodeMap.get(trace[trace.length - 1]);
+
+        const entryName = entryNode?.name || 'Unknown';
+        const terminalName = terminalNode?.name || 'Unknown';
+
+        return `${entryName} → ${terminalName}`;
+    }
+
+    private sanitizeProcessId(name: string): string {
+        return name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30).toLowerCase();
+    }
+
+    private collectTraceCommunities(trace: string[], membershipMap: Map<string, string>): string[] {
+        const communities = new Set<string>();
+        for (const nodeId of trace) {
+            const communityId = membershipMap.get(nodeId);
+            if (communityId) {
+                communities.add(communityId);
+            }
+        }
+        return Array.from(communities);
+    }
+
+    private buildMembershipMap(): Map<string, string> {
+        const membershipMap = new Map<string, string>();
+        for (const [_, edge] of this.graph.edges) {
+            if (edge.kind === 'MEMBER_OF') {
+                membershipMap.set(edge.sourceId, edge.targetId);
+            }
+        }
+        return membershipMap;
+    }
+
+    async detect(): Promise<ProcessResult> {
+        const entryPoints = this.findEntryPoints();
+        const allTraces: string[][] = [];
+
+        for (const entry of entryPoints.slice(0, this.config.maxProcesses * 2)) {
+            const traces = this.buildTrace(entry.nodeId);
+            const filtered = traces.filter(t => t.length >= this.config.minSteps);
+            allTraces.push(...filtered);
+        }
+
+        const deduped = this.deduplicateTraces(allTraces);
+        const endpointDeduped = this.deduplicateByEndpoints(deduped);
+        const limitedTraces = endpointDeduped
+            .sort((a, b) => b.length - a.length)
+            .slice(0, this.config.maxProcesses);
+
+        return this.createProcesses(limitedTraces);
+    }
+
+    private createProcesses(traces: string[][]): ProcessResult {
+        const processes: Process[] = [];
+        const steps: ProcessStep[] = [];
+        const membershipMap = this.buildMembershipMap();
+
+        for (let idx = 0; idx < traces.length; idx++) {
+            const trace = traces[idx];
+            const entryPointId = trace[0];
+            const terminalId = trace[trace.length - 1];
+            const communities = this.collectTraceCommunities(trace, membershipMap);
+            const processType = communities.length > 1 ? 'cross_community' : 'intra_community';
+            const heuristicLabel = this.generateProcessLabel(trace);
+            const processId = `proc_${idx}_${this.sanitizeProcessId(heuristicLabel)}`;
+
+            processes.push({
+                id: processId,
+                label: heuristicLabel,
+                heuristicLabel,
+                processType,
+                stepCount: trace.length,
+                communities,
+                entryPointId,
+                terminalId,
+                trace,
+            });
+
+            trace.forEach((nodeId, stepIdx) => {
+                steps.push({
+                    nodeId,
+                    processId,
+                    step: stepIdx + 1,
+                });
+            });
+        }
+
+        const crossCommunityCount = processes.filter(p => p.processType === 'cross_community').length;
+        const avgStepCount = processes.length > 0
+            ? processes.reduce((sum, p) => sum + p.stepCount, 0) / processes.length
+            : 0;
+
+        return {
+            processes,
+            steps,
+            stats: {
+                totalProcesses: processes.length,
+                crossCommunityCount,
+                avgStepCount: Math.round(avgStepCount * 10) / 10,
+                entryPointsFound: this.reverseCallGraph.size,
+            },
+        };
+    }
+}
+
+export async function detectProcesses(
+    graph: GraphStore,
+    config?: Partial<ProcessConfig>
+): Promise<ProcessResult> {
+    const detector = new ProcessDetector(graph, config);
+    return detector.detect();
+}
