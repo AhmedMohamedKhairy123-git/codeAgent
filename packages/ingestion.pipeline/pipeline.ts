@@ -128,3 +128,51 @@ export class IngestionPipeline {
 
                 for (const step of processResult.steps.filter(s => s.processId === process.id)) {
                     const edgeId = `${step.nodeId}->${step.processId}:STEP_IN_PROCESS`;
+                    if (!this.graph.getEdge(edgeId)) {
+                        this.graph = this.graph.addEdge({
+                            id: edgeId,
+                            sourceId: step.nodeId,
+                            targetId: step.processId,
+                            kind: 'STEP_IN_PROCESS',
+                            confidence: 1.0,
+                            step: step.step,
+                        });
+                    }
+                }
+            }
+        }
+
+        const duration = (Date.now() - startTime) / 1000;
+
+        this.tracker.complete({
+            filesProcessed: files.length,
+            totalFiles: files.length,
+            nodesCreated: this.graph.nodeCount,
+            edgesCreated: this.graph.edgeCount,
+        });
+
+        return {
+            graph: this.graph,
+            filePaths,
+            communityResult,
+            processResult,
+            stats: {
+                totalFiles: files.length,
+                totalNodes: this.graph.nodeCount,
+                totalEdges: this.graph.edgeCount,
+                totalCommunities: communityResult?.communities.length || 0,
+                totalProcesses: processResult?.processes.length || 0,
+                duration,
+            },
+        };
+    }
+}
+
+export async function runPipeline(
+    rootPath: string,
+    onProgress?: ProgressCallback,
+    config?: PipelineConfig
+): Promise<PipelineResult> {
+    const pipeline = new IngestionPipeline(config, onProgress);
+    return pipeline.runOnDirectory(rootPath);
+}
