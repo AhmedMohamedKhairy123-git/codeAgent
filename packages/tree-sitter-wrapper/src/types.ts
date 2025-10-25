@@ -57,3 +57,53 @@ export interface LanguageGrammar {
     usesTypescriptGrammar?: boolean;
     tsxSupport?: boolean;
 }
+import type { GraphNode, GraphEdge } from '@codeagent/core-types';
+
+export interface Process {
+    id: string;
+    label: string;
+    heuristicLabel: string;
+    processType: 'intra_community' | 'cross_community';
+    stepCount: number;
+    communities: string[];
+    entryPointId: string;
+    terminalId: string;
+    trace: string[];
+}
+
+export interface ProcessStep {
+    nodeId: string;
+    processId: string;
+    step: number;
+}
+
+export interface ProcessResult {
+    processes: Process[];
+    steps: ProcessStep[];
+    stats: {
+        totalProcesses: number;
+        crossCommunityCount: number;
+        avgStepCount: number;
+        entryPointsFound: number;
+    };
+}
+
+export interface TraceNode {
+    id: string;
+    depth: number;
+    path: string[];
+}
+
+export interface ProcessConfig {
+    maxTraceDepth: number;
+    maxBranching: number;
+    maxProcesses: number;
+    minSteps: number;
+    minConfidence: number;
+}
+
+export interface EntryPointScore {
+    nodeId: string;
+    score: number;
+    reasons: string[];
+}
