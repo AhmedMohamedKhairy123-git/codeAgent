@@ -1,0 +1,82 @@
+import fs from 'fs/promises';
+import path from 'path';
+import chalk from 'chalk';
+import os from 'os';
+
+const STORAGE_DIR = '.codeinsight';
+const META_FILE = 'meta.json';
+
+async function getCurrentCommit(repoPath: string): Promise<string> {
+    try {
+        const { execSync } = await import('child_process');
+        return execSync('git rev-parse HEAD', { cwd: repoPath, encoding: 'utf-8' }).trim();
+    } catch {
+        return 'unknown';
+    }
+}
+
+async function getLastModified(storagePath: string): Promise<Date | null> {
+    try {
+        const stat = await fs.stat(storagePath);
+        return stat.mtime;
+    } catch {
+        return null;
+    }
+}
+
+export async function statusCommand(): Promise<void> {
+    const repoPath = process.cwd();
+    const storagePath = path.join(repoPath, STORAGE_DIR);
+    const metaPath = path.join(storagePath, META_FILE);
+
+    console.log(chalk.bold('\n  CodeInsight Status\n'));
+
+    try {
+        const content = await fs.readFile(metaPath, 'utf-8');
+        const meta: RepoMeta = JSON.parse(content);
+        const currentCommit = await getCurrentCommit(repoPath);
+        const lastModified = await getLastModified(storagePath);
+        const isUpToDate = currentCommit === meta.lastCommit;
+
+        console.log(`  ${chalk.cyan('Repository:')} ${meta.repoPath}`);
+        console.log(`  ${chalk.cyan('Indexed:')} ${new Date(meta.indexedAt).toLocaleString()}`);
+        if (lastModified) {
+            console.log(`  ${chalk.cyan('Last updated:')} ${lastModified.toLocaleString()}`);
+        }
+        console.log(`  ${chalk.cyan('Indexed commit:')} ${chalk.gray(meta.lastCommit?.slice(0, 7) || 'unknown')}`);
+        console.log(`  ${chalk.cyan('Current commit:')} ${chalk.gray(currentCommit?.slice(0, 7) || 'unknown')}`);
+        console.log(`  ${chalk.cyan('Status:')} ${isUpToDate ? chalk.green('✓ up-to-date') : chalk.yellow('⚠ stale (run codeinsight analyze)')}`);
+
+        console.log(chalk.bold('\n  Statistics:'));
+        console.log(`    ${chalk.cyan('Files:')} ${(meta.stats.files || 0).toLocaleString()}`);
+        console.log(`    ${chalk.cyan('Symbols:')} ${(meta.stats.nodes || 0).toLocaleString()}`);
+        console.log(`    ${chalk.cyan('Relationships:')} ${(meta.stats.edges || 0).toLocaleString()}`);
+        console.log(`    ${chalk.cyan('Communities:')} ${meta.stats.communities || 0}`);
+        console.log(`    ${chalk.cyan('Process Flows:')} ${meta.stats.processes || 0}`);
+
+        if (meta.stats.embeddings) {
+            console.log(`    ${chalk.cyan('Embeddings:')} ${meta.stats.embeddings}`);
+        }
+
+        console.log('');
+    } catch (error) {
+        console.log(chalk.yellow('  No index found. Run: codeinsight analyze\n'));
+        if (error instanceof Error && error.message) {
+            console.log(chalk.gray(`  ${error.message}\n`));
+        }
+    }
+}
+
+interface RepoMeta {
+    repoPath: string;
+    lastCommit: string;
+    indexedAt: string;
+    stats: {
+        files: number;
+        nodes: number;
+        edges: number;
+        communities: number;
+        processes: number;
+        embeddings: number;
+    };
+}
