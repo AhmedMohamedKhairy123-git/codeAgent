@@ -82,3 +82,81 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         process.exit(1);
     });
 }
+#!/usr/bin / env node
+import { Command } from 'commander';
+import { analyzeCommand } from './commands/analyze.js';
+import { statusCommand } from './commands/status.js';
+import { listCommand } from './commands/list.js';
+import { cleanCommand } from './commands/clean.js';
+import { serveCommand } from './commands/serve.js';
+import { mcpCommand } from './commands/mcp.js';
+
+const packageJson = {
+    name: 'codeinsight',
+    version: '0.1.0',
+    description: 'CodeInsight - Code intelligence toolkit with AST analysis, call graphs, and community detection',
+};
+
+export function createProgram(): Command {
+    const program = new Command();
+
+    program
+        .name('codeinsight')
+        .description(packageJson.description)
+        .version(packageJson.version);
+
+    program
+        .command('analyze [path]')
+        .description('Index a repository (full analysis)')
+        .option('-f, --force', 'Force full re-index even if up to date')
+        .option('--embeddings', 'Enable embedding generation for semantic search')
+        .option('--skip-embeddings', 'Skip embedding generation (faster)')
+        .option('--skills', 'Generate repo-specific skill files')
+        .option('--output, -o <path>', 'Output directory for skills', './.codeinsight/skills')
+        .option('-v, --verbose', 'Enable verbose output')
+        .action(analyzeCommand);
+
+    program
+        .command('status')
+        .description('Show index status for current repo')
+        .action(statusCommand);
+
+    program
+        .command('list')
+        .description('List all indexed repositories')
+        .action(listCommand);
+
+    program
+        .command('clean')
+        .description('Delete index for current repo')
+        .option('-f, --force', 'Skip confirmation prompt')
+        .option('--all', 'Clean all indexed repos')
+        .action(cleanCommand);
+
+    program
+        .command('serve')
+        .description('Start HTTP server for web UI connection')
+        .option('-p, --port <port>', 'Port number', '4747')
+        .option('--host <host>', 'Bind address', '127.0.0.1')
+        .action(serveCommand);
+
+    program
+        .command('mcp')
+        .description('Start MCP server (stdio)')
+        .option('-r, --repo <path>', 'Repository path', process.cwd())
+        .action(mcpCommand);
+
+    return program;
+}
+
+export async function main(): Promise<void> {
+    const program = createProgram();
+    await program.parseAsync(process.argv);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+    main().catch((error) => {
+        console.error('Error:', error.message);
+        process.exit(1);
+    });
+}
