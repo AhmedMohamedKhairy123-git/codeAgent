@@ -272,3 +272,111 @@ export class GraphStore {
 export function createGraphStore(): GraphStore {
     return new GraphStore();
 }
+import fs from 'fs/promises';
+import path from 'path';
+import { GraphStore } from './graph-store.js';
+import { GraphSerializer, SerializedGraph } from './serialization.js';
+
+export interface BackupInfo {
+    path: string;
+    timestamp: Date;
+    size: number;
+    metadata: {
+        nodeCount: number;
+        edgeCount: number;
+        languages: string[];
+    };
+}
+
+export class GraphBackupManager {
+    private backupDir: string;
+    private maxBackups: number;
+
+    constructor(backupDir: string, maxBackups: number = 5) {
+        this.backupDir = backupDir;
+        this.maxBackups = maxBackups;
+    }
+
+    async createBackup(store: GraphStore, name?: string): Promise<string> {
+        await fs.mkdir(this.backupDir, { recursive: true });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupName = name ? `${name}_${timestamp}` : `backup_${timestamp}`;
+        const backupPath = path.join(this.backupDir, `${backupName}.json`);
+
+        const serialized = GraphSerializer.serialize(store);
+        await fs.writeFile(backupPath, JSON.stringify(serialized, null, 2), 'utf-8');
+
+        await this.cleanupOldBackups();
+
+        return backupPath;
+    }
+
+    async restoreBackup(backupPath: string): Promise<GraphStore> {
+        const content = await fs.readFile(backupPath, 'utf-8');
+        const data = JSON.parse(content) as SerializedGraph;
+        return GraphSerializer.deserialize(data);
+    }
+
+    async listBackups(): Promise<BackupInfo[]> {
+        try {
+            const files = await fs.readdir(this.backupDir);
+            const backups: BackupInfo[] = [];
+
+            for (const file of files) {
+                if (!file.endsWith('.json')) continue;
+
+                const filePath = path.join(this.backupDir, file);
+                const stat = await fs.stat(filePath);
+
+                try {
+                    const content = await fs.readFile(filePath, 'utf-8');
+                    const data = JSON.parse(content) as SerializedGraph;
+
+                    backups.push({
+                        path: filePath,
+                        timestamp: new Date(stat.mtime),
+                        size: stat.size,
+                        metadata: {
+                            nodeCount: data.metadata.nodeCount,
+                            edgeCount: data.metadata.edgeCount,
+                            languages: data.metadata.languages,
+                        },
+                    });
+                } catch {
+                    backups.push({
+                        path: filePath,
+                        timestamp: new Date(stat.mtime),
+                        size: stat.size,
+                        metadata: { nodeCount: 0, edgeCount: 0, languages: [] },
+                    });
+                }
+            }
+
+            backups.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+            return backups;
+        } catch {
+            return [];
+        }
+    }
+
+    private async cleanupOldBackups(): Promise<void> {
+        const backups = await this.listBackups();
+
+        if (backups.length > this.maxBackups) {
+            const toDelete = backups.slice(this.maxBackups);
+            for (const backup of toDelete) {
+                await fs.unlink(backup.path).catch(() => { });
+            }
+        }
+    }
+
+    async getLatestBackup(): Promise<BackupInfo | null> {
+        const backups = await this.listBackups();
+        return backups.length > 0 ? backups[0] : null;
+    }
+}
+
+export function createBackupManager(backupDir: string, maxBackups?: number): GraphBackupManager {
+    return new GraphBackupManager(backupDir, maxBackups);
+}
