@@ -1,7 +1,21 @@
 # 🧠 codeAgent — The Nervous System for AI Agents
 # 🚀 please wait 5 seconds to see the gif demo
 ![codeAgent Demo](videocodeagent.gif)
+## 📋 Statement of Originality
+This project is entirely my own original work, developed from scratch. 
+- **No Plagiarism:** No part of this repository has been copied from external sources or other developers.
+- **Full Accountability:** I, **Ahmed Mohamed Khairy**, assume full legal and professional responsibility for the authenticity of this work.
 
+---
+
+## ⚖️ License & Copyright
+© Copyright 2024 **Ahmed Mohamed Khairy**. All Rights Reserved.
+
+---
+
+## 📩 Contact
+For technical inquiries or business opportunities, feel free to reach out:
+* **Email:** [ahmedmohamedkhairy123@gmail.com](mailto:ahmedmohamedkhairy123@gmail.com)
 > *Your AI agent finally understands your codebase. Not just searches it — **understands** it.*
 
 <div align="center">
