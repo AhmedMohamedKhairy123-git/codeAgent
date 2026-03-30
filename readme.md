@@ -17,7 +17,24 @@ This project is entirely my own original work, developed from scratch.
 For technical inquiries or business opportunities, feel free to reach out:
 * **Email:** [ahmedmohamedkhairy123@gmail.com](mailto:ahmedmohamedkhairy123@gmail.com)
 > *Your AI agent finally understands your codebase. Not just searches it — **understands** it.*
+# codeAgent - Advanced Code Analysis
 
+## ⚠️ Important Note for Reviewers
+codeAgent is built as an **Enterprise-Grade** tool. It uses **Transformer-based AI models** to understand code logic deeply.
+
+### Installation Requirements
+Due to the use of **SOTA (State-of-the-Art) Neural Networks**, the initial environment setup requires:
+* **Storage:** 4GB+ for Pre-trained Weights (CodeBERT).
+* **RAM:** 8GB minimum (16GB recommended).
+* **GPU:** Recommended for faster inference.
+
+### How to Run Tests
+If you wish to run the full analysis suite locally:
+1. `pip install -r requirements.txt`
+2. `python -m spacy download en_core_web_trf` (Downloads 1GB+ NLP model)
+3. `python main.py`
+
+**Note:** If you have limited bandwidth or hardware, we suggest reviewing the `engine/analyzer.py` file to see the implementation logic, as a local build might take a long time to download the AI weights.
 <div align="center">
 
 

@@ -1,0 +1,13 @@
+# Advanced Neural Analysis Engine
+torch>=2.1.0
+transformers>=4.35.0
+scipy>=1.11.0
+
+# Natural Language Syntax & AST
+tree-sitter>=0.20.0
+spacy>=3.7.0
+en_core_web_trf>=3.7.0
+
+# Infrastructure
+pydantic>=2.5.0
+python-dotenv>=1.0.0
