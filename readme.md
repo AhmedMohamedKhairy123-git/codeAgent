@@ -1,4 +1,5 @@
 # 🧠 codeAgent — The Nervous System for AI Agents
+# 🚀 please wait 5 seconds to see the gif demo
 ![codeAgent Demo](videocodeagent.gif)
 
 > *Your AI agent finally understands your codebase. Not just searches it — **understands** it.*
